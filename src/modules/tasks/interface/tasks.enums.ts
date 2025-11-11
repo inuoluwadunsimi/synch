@@ -1,0 +1,7 @@
+export enum TaskStatusEnums {
+  WARNING = 'WARNING',
+  CRITICAL = 'CRITICAL',
+  DEGRADED = 'DEGRADED',
+  FIXED = 'FIXED',
+  REASSIGNED = 'REASSIGNED',
+}
