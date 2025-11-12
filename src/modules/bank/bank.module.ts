@@ -21,7 +21,7 @@ import { TasksModule } from '../tasks/tasks.module';
       { name: AtmTransaction.name, schema: AtmTransactionSchema },
       { name: AtmCashInventory.name, schema: AtmCashInventorySchema },
     ]),
-    TasksModule,
+    forwardRef(() => TasksModule),
   ],
   controllers: [BankController],
   providers: [BankRepository, BankService],

@@ -17,6 +17,7 @@ import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BankModule } from './modules/bank/bank.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { NotificationsModule } from './modules/notifcation/notification.module';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ dotenv.config();
     AuthModule,
     BankModule,
     TasksModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

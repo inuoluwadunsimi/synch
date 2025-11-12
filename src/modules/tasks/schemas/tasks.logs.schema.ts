@@ -5,6 +5,7 @@ import { Document } from 'mongoose';
 import { User, UserDocument } from '../../user/schemas/user.schema';
 import { ATM, AtmDocument } from '../../bank/schemas/atm.schema';
 import { StatusTrail, StatusTrailSchema } from './status.trail.schema';
+import { TaskTitle, TaskType } from '../interface/tasks.enums';
 
 @Schema({
   timestamps: true,
@@ -44,6 +45,22 @@ export class TasksLogs {
   @ApiProperty()
   @Prop({
     type: String,
+    required: true,
+    enum: TaskTitle,
+  })
+  taskTitle: TaskTitle;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+    enum: TaskType,
+  })
+  taskType: TaskType;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
     ref: ATM.name,
   })
   atm: string | AtmDocument;
@@ -62,6 +79,13 @@ export class TasksLogs {
     },
   ])
   statusDetails: StatusTrail[];
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+    required: true,
+  })
+  engineerNote: string;
 }
 export type TasksLogsDocument = TasksLogs & Document;
 export const TasksLogsSchema = SchemaFactory.createForClass(TasksLogs);

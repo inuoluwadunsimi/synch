@@ -8,7 +8,7 @@ export class StatusTrail {
   @Prop({
     type: String,
     enum: Object.values(TaskStatusEnums),
-    default: TaskStatusEnums.WARNING,
+    default: TaskStatusEnums.ASSIGNED,
   })
   status: TaskStatusEnums;
 

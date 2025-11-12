@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { IssueLogs, IssueLogsDocument } from './schemas/issue.logs.schema';
-import { Model, FilterQuery, UpdateQuery, ProjectionType } from 'mongoose';
+import {
+  Model,
+  FilterQuery,
+  UpdateQuery,
+  ProjectionType,
+  PipelineStage,
+} from 'mongoose';
 import { TasksLogs, TasksLogsDocument } from './schemas/tasks.logs.schema';
 import { BaseQuery, PaginatedResult } from '../../resources/interfaces';
 
@@ -166,5 +172,9 @@ export class TasksRepository {
 
   public async deleteTaskLog(filter: FilterQuery<TasksLogsDocument>) {
     return await this.tasksLogsModel.deleteOne(filter);
+  }
+
+  public async taskAggregation(pipeline: PipelineStage[]) {
+    return this.tasksLogsModel.aggregate(pipeline);
   }
 }

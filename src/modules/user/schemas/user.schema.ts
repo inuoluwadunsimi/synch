@@ -92,6 +92,12 @@ export class User {
   @Prop({
     type: String,
   })
+  expoToken: string;
+
+  @ApiProperty()
+  @Prop({
+    type: String,
+  })
   profileImageBlurHash: string;
 
   @ApiProperty({

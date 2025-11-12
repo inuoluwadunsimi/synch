@@ -54,6 +54,7 @@ export class IssueLogs {
   @ApiProperty()
   @Prop({
     type: Date,
+    default: Date.now(),
   })
   time: Date;
 

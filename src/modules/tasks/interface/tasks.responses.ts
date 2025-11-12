@@ -6,4 +6,5 @@ export enum EngineerTasksEnums {
   ASSIGNED = 'ASSIGNED',
   RESOLVED = 'RESOLVED',
   UNRESOLVED = 'UNRESOLVED',
+  REASSIGNED = 'REASSIGNED',
 }
