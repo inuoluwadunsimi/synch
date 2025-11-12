@@ -54,7 +54,11 @@ export class TasksService {
     // Reuse the same repository call
     return this.tasksRepository.getTaskLogs({
       filter,
-      query,
+      query: {
+        ...query,
+        sort: { createdAt: -1 },
+        population: ['atm'],
+      },
     });
   }
 
@@ -94,7 +98,11 @@ export class TasksService {
 
     return this.tasksRepository.getTaskLogs({
       filter,
-      query,
+      query: {
+        ...query,
+        sort: { createdAt: -1 },
+        population: ['atm'],
+      },
     });
   }
 }

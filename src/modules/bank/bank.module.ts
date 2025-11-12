@@ -12,6 +12,7 @@ import {
   AtmCashInventory,
   AtmCashInventorySchema,
 } from './schemas/atm.cash.inventory';
+import { TasksModule } from '../tasks/tasks.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import {
       { name: AtmTransaction.name, schema: AtmTransactionSchema },
       { name: AtmCashInventory.name, schema: AtmCashInventorySchema },
     ]),
+    TasksModule,
   ],
   controllers: [BankController],
   providers: [BankRepository, BankService],
