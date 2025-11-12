@@ -34,6 +34,9 @@ import { EngineerTasksEnums } from './interface/tasks.responses';
 import { TasksLogs } from './schemas/tasks.logs.schema';
 import { UserRole } from '../user/interfaces/enums/user.enums';
 import { TaskStatusEnums } from './interface/tasks.enums';
+import { ATM } from '../bank/schemas/atm.schema';
+import { BaseQuery } from '../../resources/interfaces';
+import { ChangeTaskStatusRequests } from './interface/tasks.requests';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -109,8 +112,6 @@ export class TasksController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all tasks (Admin only) with optional filters' })
   @ApiQuery({
     name: 'assignee',
@@ -188,4 +189,78 @@ export class TasksController {
       },
     });
   }
+
+  @Get('atm/history')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'atm created successfully',
+    type: [TasksLogs],
+  })
+  public async getAtmFixHistory(
+    @Param('atmId') atmId: string,
+    @Query() query: BaseQuery,
+  ) {
+    return await this.tasksService.getAtmFixHsitory(query, atmId);
+  }
+
+  @Get(':taskId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get a single task by ID' })
+  @ApiParam({
+    name: 'taskId',
+    type: String,
+    description: 'Task ID',
+    required: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Task retrieved successfully',
+    type: TasksLogs,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Task not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized',
+  })
+  async getTaskById(@Param('taskId') taskId: string) {
+    return await this.tasksService.getTaskById(taskId);
+  }
+
+  @Patch(':taskId/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change task status' })
+  @ApiParam({
+    name: 'taskId',
+    type: String,
+    description: 'Task ID',
+    required: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Task status updated successfully',
+    type: TasksLogs,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Task not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized',
+  })
+  async changeTaskStatus(
+    @Param('taskId') taskId: string,
+    @Body() body: Omit<ChangeTaskStatusRequests, 'taskId'>,
+  ) {
+    return await this.tasksService.changeTaskStatus({
+      taskId,
+      ...body,
+    });
+  }
+
+  @Get(':taskId/diagnostic-report')
+  public async generateAtmDiagonisticReport(@Param('taskId') taskId: string) {}
 }

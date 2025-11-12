@@ -70,6 +70,14 @@ export class ATM {
     type: 'Point';
     coordinates: [number, number];
   };
+
+  @ApiProperty()
+  @Prop({ type: Date, default: null })
+  lastLivenessAt: Date | null;
+
+  @ApiProperty()
+  @Prop({ type: Number, default: 0 })
+  missCount: number;
 }
 
 export type AtmDocument = ATM & Document;

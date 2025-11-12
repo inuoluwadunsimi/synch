@@ -68,7 +68,6 @@ export class TasksLogs {
   @ApiProperty()
   @Prop({
     type: String,
-    required: true,
   })
   issueDescription: string;
 

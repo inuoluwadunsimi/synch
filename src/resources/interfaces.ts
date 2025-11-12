@@ -11,12 +11,12 @@ export interface BaseQuery {
 export type PaginatedResult<T> =
   | T[] // If no pagination
   | {
-  data: T[];
-  totalItems: number;
-  itemCount: number;
-  currentPage: number;
-  totalPages: number;
-};
+      data: T[];
+      totalItems: number;
+      itemCount: number;
+      currentPage: number;
+      totalPages: number;
+    };
 
 export interface RepositoryOptions {
   sort?: Record<string, 1 | -1>;

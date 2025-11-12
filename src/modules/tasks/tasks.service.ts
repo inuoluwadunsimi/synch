@@ -9,22 +9,35 @@ import { BaseQuery } from '../../resources/interfaces';
 import { TaskStatusEnums } from './interface/tasks.enums';
 import { FilterQuery } from 'mongoose';
 import { TasksLogsDocument } from './schemas/tasks.logs.schema';
-import { CreateNewLog } from './interface/tasks.requests';
+import {
+  ChangeTaskStatusRequests,
+  CreateNewLog,
+} from './interface/tasks.requests';
 import { UserRepository } from '../user/user.repository';
 import { UserRole } from '../user/interfaces/enums/user.enums';
 import { ActivityStatus } from '../user/schemas/user.schema';
 import { BankRepository } from '../bank/bank.repository';
 import { NotificationService } from '../notifcation/notification.service';
 import { AtmHealthStatus } from '../bank/interfaces/atm.enums';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Secrets } from '../../resources/secrets';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TasksService {
+  private gemini: GoogleGenerativeAI;
+
   constructor(
     private readonly tasksRepository: TasksRepository,
     private readonly userRepository: UserRepository,
     private readonly bankkRepository: BankRepository,
     private readonly notificationService: NotificationService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.gemini = new GoogleGenerativeAI(
+      this.configService.get<string>(Secrets.GEMINI_API_KEY),
+    );
+  }
 
   public async getEngineerTasks(data: {
     user: string;
@@ -35,7 +48,6 @@ export class TasksService {
   }) {
     const { user: userId, status, query, from, to } = data;
 
-    // Map each engineer task type to corresponding TaskStatusEnums
     const statusMap: Record<EngineerTasksEnums, TaskStatusEnums[]> = {
       [EngineerTasksEnums.ASSIGNED]: [TaskStatusEnums.ASSIGNED],
       [EngineerTasksEnums.UNRESOLVED]: [TaskStatusEnums.REASSIGNED],
@@ -124,6 +136,28 @@ export class TasksService {
       atm: data.atm,
       healthStatus: data.healthStatus,
     });
+
+    const existingTask = (await this.tasksRepository.getTaskLogs({
+      filter: {
+        taskTitle: data.taskTitle,
+        atm: data.atm,
+        'statusDetails.status': {
+          $nin: [
+            TaskStatusEnums.FIXED,
+            TaskStatusEnums.UNRESOLVED,
+            TaskStatusEnums.REASSIGNED,
+          ],
+        },
+      },
+    })) as TasksLogsDocument[];
+    if (existingTask && existingTask.length > 0) {
+      return {
+        issueLog: log,
+        task: existingTask[0],
+        assignedTo: null,
+        estimatedWorkload: 0,
+      };
+    }
 
     const assignmentResult = await this.createAndAssignTasks(data);
     log.task = assignmentResult.task.id;
@@ -289,7 +323,8 @@ export class TasksService {
     };
   }
 
-  public async changeTaskStatus(status: TaskStatusEnums, taskId: string) {
+  public async changeTaskStatus(data: ChangeTaskStatusRequests) {
+    const { taskId, status, engineerNote } = data;
     const task = await this.tasksRepository.getTaskLog({ _id: taskId });
 
     if (!task) {
@@ -306,6 +341,7 @@ export class TasksService {
             time: new Date(),
           },
         },
+        engineerNote,
       },
     );
 
@@ -339,16 +375,16 @@ export class TasksService {
         );
       }
 
-      // Reassign tasks from the busiest engineer to the engineer who just completed
       await this.reassignFromBusiestEngineer(task);
     } else if (status === TaskStatusEnums.UNRESOLVED) {
+      // Reassign to the engineer with most experience in this task type
+      await this.reassignToMostExperiencedEngineer(task);
     }
 
     return updatedTask;
   }
 
   private async reassignFromBusiestEngineer(completedTask: TasksLogsDocument) {
-    // Get the ATM location
     const atm = await this.bankkRepository.getAtm({
       _id: completedTask.atm as string,
     });
@@ -356,7 +392,6 @@ export class TasksService {
       return;
     }
 
-    // Get online engineers near the ATM
     const nearbyEngineers = await this.userRepository.getUsers({
       role: UserRole.ENGINEER,
       activityStatus: ActivityStatus.ONLINE,
@@ -374,7 +409,6 @@ export class TasksService {
       return;
     }
 
-    // Calculate average time to fix for each task title using aggregation
     const avgFixTimeByTitle = await this.tasksRepository.taskAggregation([
       {
         $match: {
@@ -441,7 +475,6 @@ export class TasksService {
 
     const defaultEstimatedTime = 2;
 
-    // Calculate workload for each engineer
     const engineerWorkloads = await Promise.all(
       nearbyEngineers.map(async (engineer) => {
         const assignedTasks = await this.tasksRepository.getTaskLogs({
@@ -457,7 +490,6 @@ export class TasksService {
           ? assignedTasks
           : assignedTasks.data;
 
-        // Calculate individual task times and total
         const tasksWithEstimatedTime = tasksList.map((t) => ({
           task: t,
           estimatedTime: avgFixTimeMap.get(t.taskTitle) || defaultEstimatedTime,
@@ -476,7 +508,6 @@ export class TasksService {
       }),
     );
 
-    // Filter out the engineer who just completed the task
     const eligibleEngineers = engineerWorkloads.filter(
       (e) => e.engineer._id !== completedTask.assignee,
     );
@@ -485,7 +516,6 @@ export class TasksService {
       return;
     }
 
-    // Sort by total estimated time (descending) to find busiest engineer
     eligibleEngineers.sort(
       (a, b) => b.totalEstimatedTime - a.totalEstimatedTime,
     );
@@ -499,14 +529,12 @@ export class TasksService {
       return;
     }
 
-    // Find the task with the least estimated time from the busiest engineer
     const sortedTasks = [...busiestEngineer.tasksWithEstimatedTime].sort(
       (a, b) => a.estimatedTime - b.estimatedTime,
     );
 
     const taskToReassign = sortedTasks[0].task;
 
-    // Mark the old task as REASSIGNED
     await this.tasksRepository.updateTaskLog(
       { _id: taskToReassign._id },
       {
@@ -519,7 +547,6 @@ export class TasksService {
       },
     );
 
-    // Create a new task for the engineer who just completed their task
     await this.tasksRepository.createTaskLog({
       assignee: completedTask.assignee,
       atm: taskToReassign.atm,
@@ -533,5 +560,151 @@ export class TasksService {
         },
       ],
     });
+  }
+
+  private async reassignToMostExperiencedEngineer(
+    unresolvedTask: TasksLogsDocument,
+  ) {
+    const atm = await this.bankkRepository.getAtm({
+      _id: unresolvedTask.atm as string,
+    });
+    if (!atm) {
+      return;
+    }
+
+    const nearbyEngineers = await this.userRepository.getUsers({
+      role: UserRole.ENGINEER,
+      activityStatus: ActivityStatus.ONLINE,
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: atm.location.coordinates,
+          },
+        },
+      },
+    });
+
+    if (!nearbyEngineers || nearbyEngineers.length === 0) {
+      return;
+    }
+
+    const engineerExperienceData = await Promise.all(
+      nearbyEngineers.map(async (engineer) => {
+        const completedTasksCount = await this.tasksRepository.taskAggregation([
+          {
+            $match: {
+              assignee: engineer._id,
+              taskTitle: unresolvedTask.taskTitle,
+              'statusDetails.status': TaskStatusEnums.FIXED,
+            },
+          },
+          {
+            $count: 'completedCount',
+          },
+        ]);
+
+        const count =
+          completedTasksCount.length > 0
+            ? completedTasksCount[0].completedCount
+            : 0;
+
+        return {
+          engineer,
+          completedTasksCount: count,
+        };
+      }),
+    );
+
+    engineerExperienceData.sort(
+      (a, b) => b.completedTasksCount - a.completedTasksCount,
+    );
+
+    const mostExperiencedEngineer = engineerExperienceData[0];
+
+    if (mostExperiencedEngineer.completedTasksCount === 0) {
+      const targetEngineer = mostExperiencedEngineer.engineer;
+
+      await this.tasksRepository.updateTaskLog(
+        { _id: unresolvedTask._id },
+        {
+          $push: {
+            statusDetails: {
+              status: TaskStatusEnums.REASSIGNED,
+              time: new Date(),
+            },
+          },
+        },
+      );
+
+      await this.tasksRepository.createTaskLog({
+        assignee: targetEngineer._id,
+        atm: unresolvedTask.atm,
+        issueDescription: unresolvedTask.issueDescription,
+        taskTitle: unresolvedTask.taskTitle,
+        taskType: unresolvedTask.taskType,
+        statusDetails: [
+          {
+            status: TaskStatusEnums.ASSIGNED,
+            time: new Date(),
+          },
+        ],
+      });
+
+      return;
+    }
+
+    await this.tasksRepository.updateTaskLog(
+      { _id: unresolvedTask._id },
+      {
+        $push: {
+          statusDetails: {
+            status: TaskStatusEnums.REASSIGNED,
+            time: new Date(),
+          },
+        },
+      },
+    );
+
+    await this.tasksRepository.createTaskLog({
+      assignee: mostExperiencedEngineer.engineer._id,
+      atm: unresolvedTask.atm,
+      issueDescription: unresolvedTask.issueDescription,
+      taskTitle: unresolvedTask.taskTitle,
+      taskType: unresolvedTask.taskType,
+      statusDetails: [
+        {
+          status: TaskStatusEnums.ASSIGNED,
+          time: new Date(),
+        },
+      ],
+    });
+  }
+
+  public async getAtmFixHsitory(query: BaseQuery, atmId: string) {
+    return this.tasksRepository.getTaskLogs({
+      filter: { atm: atmId },
+      query: {
+        ...query,
+        sort: { createdAt: -1 },
+        population: ['assignee'],
+      },
+    });
+  }
+
+  public async getTaskById(taskId: string) {
+    const task = await this.tasksRepository.getTaskLog({ _id: taskId });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    return task;
+  }
+
+  public async generateDiagnosticReport(taskId: string) {
+    const task = await this.tasksRepository.getTaskLog({ _id: taskId });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    const model = this.gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 }

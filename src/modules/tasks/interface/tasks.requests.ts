@@ -10,3 +10,9 @@ export interface CreateNewLog {
   issueDescription: string;
   status: TaskStatusEnums;
 }
+
+export interface ChangeTaskStatusRequests {
+  taskId: string;
+  status: TaskStatusEnums;
+  engineerNote: string;
+}
