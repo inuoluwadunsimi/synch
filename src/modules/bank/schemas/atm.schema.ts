@@ -82,3 +82,4 @@ export class ATM {
 
 export type AtmDocument = ATM & Document;
 export const ATMSchema = SchemaFactory.createForClass(ATM);
+ATMSchema.index({ location: '2dsphere' });

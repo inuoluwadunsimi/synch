@@ -23,7 +23,8 @@ async function bootstrap() {
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Authorization,x-auth-token,X-Auth-Token',
+    allowedHeaders:
+      'Content-Type,Authorization,x-auth-token,X-Auth-Token,ngrok-skip-browser-warning',
     credentials: true,
   });
   const configService = app.get(ConfigService);
@@ -51,8 +52,6 @@ async function bootstrap() {
     }),
   );
 
-
-
   app.getHttpAdapter().get('/', (req, res) => {
     res.send('welcome to glouse');
   });
@@ -73,9 +72,7 @@ async function bootstrap() {
     )
     .build();
   const document = SwaggerModule.createDocument(app, options);
-  if (process.env.NODE_ENV === 'development') {
-    SwaggerModule.setup('/api/v1/docs', app, document);
-  }
+  SwaggerModule.setup('/api/v1/docs', app, document);
 
   await app.listen(port);
 }

@@ -23,7 +23,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { SignupDto } from './dto/signup.dto';
+import { LoginDto, SignupDto } from './dto/signup.dto';
 import { AuthResponse } from './interfaces/auth.responses';
 
 @Controller('auth')
@@ -41,7 +41,7 @@ export class AuthController {
   @ApiOperation({ summary: 'user login' })
   @ApiResponse({ status: 200, type: AuthResponse })
   @Post('login')
-  public async login(@Body() body: SignupDto) {
-    return await this.authService.signup(body);
+  public async login(@Body() body: LoginDto) {
+    return await this.authService.login(body);
   }
 }

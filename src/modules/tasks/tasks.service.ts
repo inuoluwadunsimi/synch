@@ -6,7 +6,7 @@ import {
 import { TasksRepository } from './tasks.repository';
 import { EngineerTasksEnums } from './interface/tasks.responses';
 import { BaseQuery } from '../../resources/interfaces';
-import { TaskStatusEnums } from './interface/tasks.enums';
+import { allowedTransitions, TaskStatusEnums } from './interface/tasks.enums';
 import { FilterQuery } from 'mongoose';
 import { TasksLogsDocument } from './schemas/tasks.logs.schema';
 import {
@@ -625,18 +625,6 @@ export class TasksService {
     if (mostExperiencedEngineer.completedTasksCount === 0) {
       const targetEngineer = mostExperiencedEngineer.engineer;
 
-      await this.tasksRepository.updateTaskLog(
-        { _id: unresolvedTask._id },
-        {
-          $push: {
-            statusDetails: {
-              status: TaskStatusEnums.REASSIGNED,
-              time: new Date(),
-            },
-          },
-        },
-      );
-
       await this.tasksRepository.createTaskLog({
         assignee: targetEngineer._id,
         atm: unresolvedTask.atm,
@@ -849,5 +837,13 @@ Format the report in a clear, professional manner suitable for field engineers.`
     }, 0);
 
     return Math.round((totalTime / tasks.length) * 100) / 100; // Round to 2 decimals
+  }
+
+  private canTransition(
+    currentStatus: TaskStatusEnums,
+    newStatus: TaskStatusEnums,
+  ): boolean {
+    const validNextStatuses = allowedTransitions[currentStatus];
+    return validNextStatuses.includes(newStatus);
   }
 }

@@ -6,14 +6,27 @@ export enum TaskStatusEnums {
   IN_PROGRESS = 'INPROGRESS',
 }
 
+export const allowedTransitions: {
+  [key in TaskStatusEnums]: TaskStatusEnums[];
+} = {
+  [TaskStatusEnums.ASSIGNED]: [
+    TaskStatusEnums.IN_PROGRESS,
+    TaskStatusEnums.REASSIGNED,
+    TaskStatusEnums.UNRESOLVED,
+  ],
+  [TaskStatusEnums.IN_PROGRESS]: [
+    TaskStatusEnums.FIXED,
+    TaskStatusEnums.REASSIGNED,
+    TaskStatusEnums.UNRESOLVED,
+  ],
+  [TaskStatusEnums.REASSIGNED]: [],
+  [TaskStatusEnums.FIXED]: [],
+  [TaskStatusEnums.UNRESOLVED]: [],
+};
+
 export enum TaskTitle {
   NETWORK_OUTAGE = 'network outage',
-  // CONFIGURATION_ISSUE = 'configuration issue',
-  // TRANSACTION_FAILURE = 'transaction failure',
-  // SSL_EXPIRED = 'ssl expired',
-  // MEMORY_FULL = 'memory full',
-  // CASH_DISPENSER_JAMMED = 'cash dispenser jammed',
-  // PRINTER_JAMMED = 'printer jammed',
+
   LOW_CASH = 'low cash',
   CARD_RETAINED = 'card retained',
   CARD_JAMMED = 'card jammed',

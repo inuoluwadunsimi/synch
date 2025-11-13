@@ -55,6 +55,7 @@ export class TasksLogs {
     type: String,
     required: true,
     enum: TaskType,
+    default: TaskType.HARDWARE,
   })
   taskType: TaskType;
 
@@ -82,7 +83,6 @@ export class TasksLogs {
   @ApiProperty()
   @Prop({
     type: String,
-    required: true,
   })
   engineerNote: string;
 

@@ -32,7 +32,7 @@ export class SdkService {
     })) as AtmDocument[];
 
     for (const atm of onlineAtms) {
-      const atmm = await this.bankRepository.updateAtm(
+      await this.bankRepository.updateAtm(
         { _id: atm.id },
         { lastLivenessAt: new Date(), healthStatus: AtmHealthStatus.HEALTHY },
       );
@@ -53,12 +53,13 @@ export class SdkService {
         ? new Date(atm.lastLivenessAt).getTime()
         : 0;
       const diff = now - last;
-      if (diff > 5 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.WARNING); // >5 minutes
-      } else if (diff > 15 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.DEGRADED); // >15 seconds
+      console.log(diff);
+      if (diff > 15 * 1000) {
+        await this.updateHealth(atm, AtmHealthStatus.DEGRADED); // >15s since last ping
       } else if (diff > 10 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.CRITICAL); // >10 seconds
+        await this.updateHealth(atm, AtmHealthStatus.CRITICAL); // >10s since last ping
+      } else if (diff > 6 * 1000) {
+        await this.updateHealth(atm, AtmHealthStatus.WARNING); // >5s since last ping
       } else {
         await this.updateHealth(atm, AtmHealthStatus.HEALTHY);
       }
@@ -73,13 +74,15 @@ export class SdkService {
       );
     }
 
-    await this.taskService.registerIssueLogs({
-      atm: atm.id,
-      healthStatus: status,
-      taskTitle: TaskTitle.NETWORK_OUTAGE,
-      issueDescription: `ATM failed liveness check. Marked as ${status}`,
-      status: TaskStatusEnums.ASSIGNED,
-    });
+    if (status !== AtmHealthStatus.HEALTHY) {
+      await this.taskService.registerIssueLogs({
+        atm: atm.id,
+        healthStatus: status,
+        taskTitle: TaskTitle.NETWORK_OUTAGE,
+        issueDescription: `ATM failed liveness check. Marked as ${status}`,
+        status: TaskStatusEnums.ASSIGNED,
+      });
+    }
   }
 
   private calculateDenominations(
