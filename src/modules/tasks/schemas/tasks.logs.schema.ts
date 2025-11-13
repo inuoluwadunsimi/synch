@@ -85,6 +85,12 @@ export class TasksLogs {
     required: true,
   })
   engineerNote: string;
+
+  @ApiProperty()
+  createdAt?: Date;
+
+  @ApiProperty()
+  updatedAt?: Date;
 }
 export type TasksLogsDocument = TasksLogs & Document;
 export const TasksLogsSchema = SchemaFactory.createForClass(TasksLogs);

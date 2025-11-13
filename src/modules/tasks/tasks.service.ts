@@ -705,6 +705,149 @@ export class TasksService {
     if (!task) {
       throw new NotFoundException('Task not found');
     }
-    const model = this.gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    // Get ATM details
+    const atm = await this.bankkRepository.getAtm({
+      _id: task.atm as string,
+    });
+
+    // Get historical tasks with the same title that were successfully fixed
+    const historicalTasks = await this.tasksRepository.getTaskLogs({
+      filter: {
+        taskTitle: task.taskTitle,
+        'statusDetails.status': TaskStatusEnums.FIXED,
+      },
+      query: {
+        limit: 10,
+        sort: { createdAt: -1 },
+      },
+    });
+
+    const historicalTasksList = Array.isArray(historicalTasks)
+      ? historicalTasks
+      : historicalTasks.data;
+
+    // Get recent issue logs for the ATM
+    const recentIssueLogs = await this.tasksRepository.getIssueLogs({
+      filter: {
+        atm: task.atm as string,
+      },
+      query: {
+        limit: 5,
+        sort: { time: -1 },
+      },
+    });
+
+    const recentIssueLogsList = Array.isArray(recentIssueLogs)
+      ? recentIssueLogs
+      : recentIssueLogs.data;
+
+    // Prepare historical context
+    const historicalContext = historicalTasksList
+      .map(
+        (historicalTask, index) => `
+Case ${index + 1}:
+- Issue Description: ${historicalTask.issueDescription || 'N/A'}
+- Engineer Note: ${historicalTask.engineerNote || 'N/A'}
+- Time to Fix: ${this.calculateTimeToFix(historicalTask)} hours
+- Status History: ${JSON.stringify(historicalTask.statusDetails)}
+`,
+      )
+      .join('\n');
+
+    // Prepare recent health status
+    const healthStatusHistory = recentIssueLogsList
+      .map(
+        (log, index) => `
+${index + 1}. ${new Date(log.time).toISOString()}: ${log.healthStatus}`,
+      )
+      .join('\n');
+
+    // Construct comprehensive prompt for AI
+    const prompt = `Generate a detailed diagnostic report for the following ATM issue:
+
+**Current Issue Details:**
+- Task ID: ${task._id}
+- ATM ID: ${atm?._id || 'Unknown'}
+- ATM Location: ${atm?.location ? `[${atm.location.coordinates[0]}, ${atm.location.coordinates[1]}]` : 'Unknown'}
+- Current ATM Health Status: ${atm?.healthStatus || 'Unknown'}
+- Current ATM Activity Status: ${atm?.activitySatus || 'Unknown'}
+- Issue Type: ${task.taskTitle}
+- Task Type: ${task.taskType || 'Unknown'}
+- Issue Description: ${task.issueDescription || 'No description provided'}
+- Current Status: ${task.statusDetails[task.statusDetails.length - 1]?.status || 'Unknown'}
+- Engineer Note: ${task.engineerNote || 'No notes yet'}
+- Date Reported: ${new Date(task.createdAt).toISOString()}
+
+**Recent ATM Health Status History (Last 5 entries):**
+${healthStatusHistory || 'No recent health status data available'}
+
+**Historical Context (Similar Issues):**
+${historicalContext || 'No historical data available for this issue type'}
+
+**Total Similar Cases Fixed:** ${historicalTasksList.length}
+
+Please provide a comprehensive diagnostic report with the following sections:
+
+1. **Issue Summary**: A brief overview of the current problem
+2. **Root Cause Analysis**: Potential root causes based on the issue type, description, and historical patterns
+3. **Impact Assessment**: How this issue affects ATM functionality and users
+4. **Recommended Fix Steps**: Detailed step-by-step instructions to resolve the issue, based on successful historical fixes
+5. **Preventive Measures**: Recommendations to prevent this issue from recurring
+6. **Estimated Time to Fix**: Based on historical data (average: ${this.calculateAverageFixTime(historicalTasksList)} hours)
+7. **Priority Level**: Urgency assessment (Critical/High/Medium/Low)
+8. **Additional Observations**: Any patterns or concerns from the health status history
+
+Format the report in a clear, professional manner suitable for field engineers.`;
+
+    const model = this.gemini.getGenerativeModel({
+      model: 'gemini-2.0-flash-exp',
+    });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const diagnosticReport = response.text();
+
+    return {
+      taskId: task._id,
+      atmId: atm?._id,
+      issueType: task.taskTitle,
+      generatedAt: new Date().toISOString(),
+      report: diagnosticReport,
+      metadata: {
+        historicalCasesAnalyzed: historicalTasksList.length,
+        averageFixTime: this.calculateAverageFixTime(historicalTasksList),
+        recentHealthStatusCount: recentIssueLogsList.length,
+      },
+    };
+  }
+
+  private calculateTimeToFix(task: any): number {
+    const assignedStatus = task.statusDetails.find(
+      (s: any) =>
+        s.status === TaskStatusEnums.ASSIGNED ||
+        s.status === TaskStatusEnums.REASSIGNED,
+    );
+    const fixedStatus = task.statusDetails.find(
+      (s: any) => s.status === TaskStatusEnums.FIXED,
+    );
+
+    if (!assignedStatus || !fixedStatus) {
+      return 0;
+    }
+
+    const timeDiff =
+      new Date(fixedStatus.time).getTime() -
+      new Date(assignedStatus.time).getTime();
+    return Math.round((timeDiff / (1000 * 60 * 60)) * 100) / 100; // Convert to hours, round to 2 decimals
+  }
+
+  private calculateAverageFixTime(tasks: any[]): number {
+    if (tasks.length === 0) return 0;
+
+    const totalTime = tasks.reduce((sum, task) => {
+      return sum + this.calculateTimeToFix(task);
+    }, 0);
+
+    return Math.round((totalTime / tasks.length) * 100) / 100; // Round to 2 decimals
   }
 }

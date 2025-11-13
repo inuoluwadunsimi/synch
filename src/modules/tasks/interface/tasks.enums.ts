@@ -8,15 +8,17 @@ export enum TaskStatusEnums {
 
 export enum TaskTitle {
   NETWORK_OUTAGE = 'network outage',
-  CONFIGURATION_ISSUE = 'configuration issue',
-  TRANSACTION_FAILURE = 'transaction failure',
-  SSL_EXPIRED = 'ssl expired',
-  MEMORY_FULL = 'memory full',
-  CASH_DISPENSER_JAMMED = 'cash dispenser jammed',
-  PRINTER_JAMMED = 'printer jammed',
+  // CONFIGURATION_ISSUE = 'configuration issue',
+  // TRANSACTION_FAILURE = 'transaction failure',
+  // SSL_EXPIRED = 'ssl expired',
+  // MEMORY_FULL = 'memory full',
+  // CASH_DISPENSER_JAMMED = 'cash dispenser jammed',
+  // PRINTER_JAMMED = 'printer jammed',
   LOW_CASH = 'low cash',
   CARD_RETAINED = 'card retained',
-  MALWARE_DETECTED = 'malware detected',
+  CARD_JAMMED = 'card jammed',
+  CARD_EJECT_FAILURE = 'card eject failure',
+  CASH_JAMMED = 'cash jammed',
 }
 
 export enum TaskType {

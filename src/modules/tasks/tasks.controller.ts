@@ -262,5 +262,29 @@ export class TasksController {
   }
 
   @Get(':taskId/diagnostic-report')
-  public async generateAtmDiagonisticReport(@Param('taskId') taskId: string) {}
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate AI-powered diagnostic report for a task',
+  })
+  @ApiParam({
+    name: 'taskId',
+    type: String,
+    description: 'Task ID',
+    required: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Diagnostic report generated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Task not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized',
+  })
+  public async generateAtmDiagnosticReport(@Param('taskId') taskId: string) {
+    return await this.tasksService.generateDiagnosticReport(taskId);
+  }
 }
