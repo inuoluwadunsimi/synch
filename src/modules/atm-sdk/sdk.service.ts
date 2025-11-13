@@ -20,27 +20,28 @@ export class SdkService {
   private readonly MAX_PIN_ATTEMPTS = 3;
 
   constructor(
-    private readonly bankService: BankService,
     private readonly bankRepository: BankRepository,
     private readonly taskService: TasksService,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   public async emitLiveness() {
+    this.logger.log('Emitting liveness checks to online ATMs...');
     const onlineAtms = (await this.bankRepository.getAtms({
-      filter: { activityStatus: AtmActivityStatus.ONLINE },
+      filter: { activitySatus: AtmActivityStatus.ONLINE },
     })) as AtmDocument[];
 
     for (const atm of onlineAtms) {
-      await this.bankRepository.updateAtm(
+      const atmm = await this.bankRepository.updateAtm(
         { _id: atm.id },
         { lastLivenessAt: new Date(), healthStatus: AtmHealthStatus.HEALTHY },
       );
+
       this.logger.log(`ATM ${atm._id} sent liveness check ✅`);
     }
   }
 
-  @Cron(CronExpression.EVERY_5_SECONDS)
+  // @Cron(CronExpression.EVERY_5_SECONDS)
   public async checkLiveness() {
     const atms = (await this.bankRepository.getAtms({
       filter: {},
@@ -52,12 +53,12 @@ export class SdkService {
         ? new Date(atm.lastLivenessAt).getTime()
         : 0;
       const diff = now - last;
-      if (diff > 15 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.DEGRADED);
+      if (diff > 5 * 1000) {
+        await this.updateHealth(atm, AtmHealthStatus.WARNING); // >5 minutes
+      } else if (diff > 15 * 1000) {
+        await this.updateHealth(atm, AtmHealthStatus.DEGRADED); // >15 seconds
       } else if (diff > 10 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.CRITICAL);
-      } else if (diff > 5 * 60 * 1000) {
-        await this.updateHealth(atm, AtmHealthStatus.WARNING);
+        await this.updateHealth(atm, AtmHealthStatus.CRITICAL); // >10 seconds
       } else {
         await this.updateHealth(atm, AtmHealthStatus.HEALTHY);
       }

@@ -36,7 +36,6 @@ export class SignupDto {
     description: 'firstName',
   })
   @IsString()
-  @IsOptional()
   lastName: string;
 
   @ApiProperty({
@@ -53,6 +52,12 @@ export class SignupDto {
   @ApiProperty({ required: false, type: GeolocationDTO })
   @Type(() => GeolocationDTO)
   geolocation?: GeolocationDTO;
+
+  @ApiProperty({
+    description: 'firstName',
+  })
+  @IsString()
+  expoToken: string;
 }
 
 export class LoginDto {

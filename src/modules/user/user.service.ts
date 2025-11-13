@@ -30,4 +30,8 @@ export class UserService {
       { activityStatus: status },
     );
   }
+
+  public async updateExpoToken(userId: string, expoToken: string) {
+    await this.userRepository.updateUser({ _id: userId }, { expoToken });
+  }
 }

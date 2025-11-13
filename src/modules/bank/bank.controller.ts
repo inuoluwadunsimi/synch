@@ -34,7 +34,6 @@ import { BaseQuery } from '../../resources/interfaces';
 
 @Controller('bank')
 @ApiTags('bank')
-@UseGuards(JwtAuthGuard)
 export class BankController {
   constructor(private readonly bankService: BankService) {}
 
@@ -71,7 +70,7 @@ export class BankController {
     return await this.bankService.getAllAtms(filter, query);
   }
 
-  @Get('atm/:id')
+  @Get('atm/:atmId')
   @ApiResponse({
     status: HttpStatus.OK,
     description: " 'Get all atms successfully",
@@ -87,10 +86,7 @@ export class BankController {
     required: false,
     enum: AtmHealthStatus,
   })
-  public async getAtmData(
-    @Query() filter: GetATMQuery,
-    @Query() query: BaseQuery,
-  ) {
-    return await this.bankService.getAllAtms(filter, query);
+  public async getAtmData(@Param('atmId') atmId: string) {
+    return await this.bankService.getAtmData(atmId);
   }
 }

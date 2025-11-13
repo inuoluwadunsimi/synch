@@ -32,7 +32,7 @@ import { UserRole } from './interfaces/enums/user.enums';
 import { User } from './schemas/user.schema';
 import { Auth } from '../../decorators/auth.decorator';
 import { IUser } from '../auth/interfaces/interfaces';
-import { ToggleOnlineDto } from './dtos/user.dtos';
+import { ToggleOnlineDto, UpdateDto } from './dtos/user.dtos';
 
 @Controller('user')
 @ApiTags('user')
@@ -105,5 +105,16 @@ export class UserController {
       user.userId,
       body.activityStatus,
     );
+  }
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'token updated',
+    type: User,
+  })
+  @ApiOperation({ summary: 'Get all users with optional role filter' })
+  @Patch('token')
+  public async updateExpoToken(@Auth() user: IUser, @Body() body: UpdateDto) {
+    return await this.userService.updateExpoToken(user.userId, body.expoToken);
   }
 }

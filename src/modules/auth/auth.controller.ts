@@ -26,8 +26,8 @@ import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { AuthResponse } from './interfaces/auth.responses';
 
-@Controller('user')
-@ApiTags('user')
+@Controller('auth')
+@ApiTags('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

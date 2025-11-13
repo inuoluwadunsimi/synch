@@ -43,7 +43,7 @@ export class ATM {
   @ApiProperty()
   @Prop({
     type: String,
-    enum: AtmActivityStatus,
+    enum: AtmHealthStatus,
     default: AtmHealthStatus.HEALTHY,
   })
   healthStatus: AtmHealthStatus;
