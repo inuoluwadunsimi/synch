@@ -19,6 +19,7 @@ import { BankModule } from './modules/bank/bank.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { NotificationsModule } from './modules/notifcation/notification.module';
 import { SdkModule } from './modules/atm-sdk/sdk.module';
+import { SeederModule } from './modules/seeder/seeder.module';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ dotenv.config();
     TasksModule,
     NotificationsModule,
     SdkModule,
+    SeederModule,
   ],
   controllers: [AppController],
   providers: [

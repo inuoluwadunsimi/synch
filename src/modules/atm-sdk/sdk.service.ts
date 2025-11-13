@@ -24,7 +24,7 @@ export class SdkService {
     private readonly taskService: TasksService,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_SECONDS)
+  // @Cron(CronExpression.EVERY_5_SECONDS)
   public async emitLiveness() {
     this.logger.log('Emitting liveness checks to online ATMs...');
     const onlineAtms = (await this.bankRepository.getAtms({

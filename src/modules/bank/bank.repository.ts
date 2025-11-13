@@ -5,7 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ATM, AtmDocument } from './schemas/atm.schema';
-import { Model, FilterQuery, UpdateQuery, ProjectionType } from 'mongoose';
+import {
+  Model,
+  FilterQuery,
+  UpdateQuery,
+  ProjectionType,
+  PipelineStage,
+} from 'mongoose';
 import {
   AtmCashInventory,
   AtmCashInventoryDocument,
@@ -86,6 +92,10 @@ export class BankRepository {
 
   public async deleteAtm(filter: FilterQuery<AtmDocument>) {
     return await this.atmModel.deleteOne(filter);
+  }
+
+  public async atmAggregation(pipeline: PipelineStage[]) {
+    return this.atmModel.aggregate(pipeline);
   }
 
   // ==================== ATM Cash Inventory Repository Methods ====================
