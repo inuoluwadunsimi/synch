@@ -839,8 +839,7 @@ ${historicalContext || 'No historical data available for this issue type'}
     });
 
     const result = await model.generateContent(prompt);
-    const diagnosticReportText = result.response.text.trim();
-
+    const diagnosticReportText = result.response.text().trim();
     let diagnosticReport;
     try {
       // Attempt to parse the clean JSON output
