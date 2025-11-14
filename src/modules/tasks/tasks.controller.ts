@@ -40,7 +40,6 @@ import { ChangeTaskStatusRequests } from './interface/tasks.requests';
 
 @Controller('tasks')
 @ApiTags('tasks')
-@UseGuards(JwtAuthGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
@@ -90,6 +89,7 @@ export class TasksController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized',
   })
+  @UseGuards(JwtAuthGuard)
   async getEngineerTasks(
     @Auth() user: IUser,
     @Query('status') status: EngineerTasksEnums,
@@ -225,6 +225,7 @@ export class TasksController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized',
   })
+  @UseGuards(JwtAuthGuard)
   async getTaskById(@Param('taskId') taskId: string) {
     return await this.tasksService.getTaskById(taskId);
   }
@@ -251,6 +252,7 @@ export class TasksController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized',
   })
+  @UseGuards(JwtAuthGuard)
   async changeTaskStatus(
     @Param('taskId') taskId: string,
     @Body() body: Omit<ChangeTaskStatusRequests, 'taskId'>,
@@ -284,6 +286,7 @@ export class TasksController {
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized',
   })
+  @UseGuards(JwtAuthGuard)
   public async generateAtmDiagnosticReport(@Param('taskId') taskId: string) {
     return await this.tasksService.generateDiagnosticReport(taskId);
   }

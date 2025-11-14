@@ -182,4 +182,59 @@ export class AdminService {
     // Returns the fleet-wide uptime percentage
     return Math.max(0, averageUptimePercentage);
   }
+
+  public async getAtmsWithLatestCash(): Promise<any[]> {
+    const atmsWithCash = await this.bankRepository.atmAggregation([
+      // Stage 1: Get the latest cash inventory for each ATM
+      {
+        $lookup: {
+          from: 'atmcashinventories', // MUST be the actual collection name for AtmCashInventory
+          localField: '_id',
+          foreignField: 'atm',
+          as: 'inventoryHistory',
+        },
+      },
+
+      // Stage 2: Sort the inventory history array within each ATM document
+      // This is crucial to put the latest entry at the beginning (or end)
+      {
+        $addFields: {
+          inventoryHistory: {
+            $sortArray: {
+              input: '$inventoryHistory',
+              sortBy: { createdAt: -1 }, // Sort by date descending (newest first)
+            },
+          },
+        },
+      },
+
+      // Stage 3: Select only the first (latest) element of the sorted array
+      {
+        $addFields: {
+          latestInventory: {
+            $arrayElemAt: ['$inventoryHistory', 0],
+          },
+        },
+      },
+
+      // Stage 4: Project the final output fields
+      {
+        $project: {
+          // Keep all fields from the ATM document
+          _id: 1,
+          activitySatus: 1,
+          healthStatus: 1,
+          location: 1,
+          lastLivenessAt: 1,
+          missCount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          // Add the totalAmount from the latest inventory log
+          totalAmount: { $ifNull: ['$latestInventory.totalAmount', 0] },
+        },
+      },
+    ]);
+
+    return atmsWithCash;
+  }
 }

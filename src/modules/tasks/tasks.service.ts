@@ -143,7 +143,7 @@ export class TasksService {
       query: {
         ...query,
         sort: { createdAt: -1 },
-        population: ['atm'],
+        population: ['atm', 'assignee'],
       },
     });
   }
