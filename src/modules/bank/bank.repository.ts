@@ -83,6 +83,10 @@ export class BankRepository {
     return await mongooseQuery.exec();
   }
 
+  public async countAtms(filter: FilterQuery<AtmDocument>): Promise<number> {
+    return await this.atmModel.countDocuments(filter);
+  }
+
   public async updateAtm(
     filter: FilterQuery<AtmDocument>,
     update: UpdateQuery<AtmDocument>,

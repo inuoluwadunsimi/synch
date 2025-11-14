@@ -99,6 +99,10 @@ export class TasksRepository {
     return await this.issueLogsModel.deleteOne(filter);
   }
 
+  public async issueAggregation(pipeline: PipelineStage[]) {
+    return this.issueLogsModel.aggregate(pipeline);
+  }
+
   // ==================== TasksLogs Repository Methods ====================
 
   public async createTaskLog(
