@@ -98,15 +98,19 @@ export class NotificationService {
   public async sendWhatsappMessage(
     body: SendTextWhatsappMessage,
   ): Promise<void> {
+    const formattedPhoneNumber = body.phoneNumber.replace(/^0/, '234');
+
     const url = `https://graph.facebook.com/v15.0/${this.configService.get(Secrets.WHATSAPP_PHONE_NUMBER_ID)}/messages`;
     const headers = {
       Authorization: `Bearer ${this.configService.get(Secrets.WHATSAPP_ACCESS_TOKEN)}`,
       'Content-Type': 'application/json',
     };
 
+    console.log(this.configService.get(Secrets.WHATSAPP_ACCESS_TOKEN));
+
     const data = {
       messaging_product: 'whatsapp',
-      to: body.phoneNumber, // Full international format
+      to: formattedPhoneNumber, // Full international format
       type: 'text',
       recipient_type: 'individual',
       text: {

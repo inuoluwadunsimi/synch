@@ -20,6 +20,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { NotificationsModule } from './modules/notifcation/notification.module';
 import { SdkModule } from './modules/atm-sdk/sdk.module';
 import { SeederModule } from './modules/seeder/seeder.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ dotenv.config();
     NotificationsModule,
     SdkModule,
     SeederModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

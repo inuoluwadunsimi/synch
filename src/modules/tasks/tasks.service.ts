@@ -65,8 +65,21 @@ export class TasksService {
     // Build filter object
     const filter: any = {
       assignee: userId,
-      'statusDetails.status': { $in: statuses },
     };
+
+    // --- CRITICAL CHANGE: Use $expr to check the last status ---
+    filter.$expr = {
+      $in: [
+        {
+          $arrayElemAt: [
+            '$statusDetails.status', // Array of all status strings
+            -1, // Index -1 returns the last element
+          ],
+        },
+        statuses, // The target statuses array (e.g., ['FIXED'])
+      ],
+    };
+    // ------
 
     // Add date range filter if provided
     if (from || to) {
@@ -183,6 +196,10 @@ export class TasksService {
       taskId: assignmentResult.task.id,
       status: data.healthStatus,
       token: (assignmentResult.assignedTo as any).expoToken,
+    });
+    await this.notificationService.sendWhatsappMessage({
+      content: `New Task Assigned: ${data.taskTitle}\nATM ID: ${data.atm}\nDescription: ${data.issueDescription}\nAssigned To: ${(assignmentResult.assignedTo as any).name}`,
+      phoneNumber: (assignmentResult.assignedTo as any).phoneNumber,
     });
 
     return {

@@ -17,9 +17,7 @@ import {
 
 @Module({
   imports: [
-    MongooseModule.forRoot(
-      'mongodb+srv://Inuoluwadunsimi:Thesaneman12_@chat-app.8n2r2ot.mongodb.net/synch',
-    ),
+    MongooseModule.forRoot(''),
 
     // Connect to your DB (you'll use your standard ConfigModule/Mongoose.forRoot)
     // For simplicity, assuming these are the models you need to inject:
