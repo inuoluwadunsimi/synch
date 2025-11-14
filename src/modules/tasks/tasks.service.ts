@@ -858,16 +858,7 @@ ${historicalContext || 'No historical data available for this issue type'}
     }
 
     return {
-      taskId: task._id,
-      atmId: atm?._id,
-      issueType: task.taskTitle,
-      generatedAt: new Date().toISOString(),
-      report: diagnosticReport, // Now holds a structured object
-      metadata: {
-        historicalCasesAnalyzed: historicalTasksList.length,
-        averageFixTime: this.calculateAverageFixTime(historicalTasksList),
-        recentHealthStatusCount: recentIssueLogsList.length,
-      },
+      ...diagnosticReport,
     };
   }
   private calculateTimeToFix(task: any): number {
