@@ -107,6 +107,7 @@ export class NotificationService {
     };
 
     console.log(this.configService.get(Secrets.WHATSAPP_ACCESS_TOKEN));
+    console.log(this.configService.get(Secrets.WHATSAPP_PHONE_NUMBER_ID));
 
     const data = {
       messaging_product: 'whatsapp',

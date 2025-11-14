@@ -17,12 +17,16 @@ import { UserRepository } from '../user/user.repository';
 import { UserRole } from '../user/interfaces/enums/user.enums';
 import { ActivityStatus, UserDocument } from '../user/schemas/user.schema';
 import { BankRepository } from '../bank/bank.repository';
-import { NotificationService } from '../notifcation/notification.service';
+import {
+  NotificationService,
+  SendTextWhatsappMessage,
+} from '../notifcation/notification.service';
 import { AtmHealthStatus } from '../bank/interfaces/atm.enums';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Secrets } from '../../resources/secrets';
 import { ConfigService } from '@nestjs/config';
 import { query } from 'express';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class TasksService {
@@ -879,5 +883,13 @@ Format the report in a clear, professional manner suitable for field engineers.`
   ): boolean {
     const validNextStatuses = allowedTransitions[currentStatus];
     return validNextStatuses.includes(newStatus);
+  }
+
+  // @Cron(CronExpression.EVERY_5_SECONDS)
+  public async testWhatsapp() {
+    await this.notificationService.sendWhatsappMessage({
+      content: `This is a test message from ATM Maintenance System.`,
+      phoneNumber: '2348056892881',
+    });
   }
 }

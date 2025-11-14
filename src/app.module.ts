@@ -47,16 +47,16 @@ dotenv.config();
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'inuoluwadunsimi',
-      password: 'postgres',
-      database: 'metrics',
-      // entities: [LivenessEvent],
-      synchronize: true, // disable in production
-    }),
+    // TypeOrmModule.forRoot({
+    //   type: 'postgres',
+    //   host: 'localhost',
+    //   port: 5432,
+    //   username: 'inuoluwadunsimi',
+    //   password: 'postgres',
+    //   database: 'metrics',
+    //   // entities: [LivenessEvent],
+    //   synchronize: true, // disable in production
+    // }),
 
     LoggerModule,
     UserModule,
