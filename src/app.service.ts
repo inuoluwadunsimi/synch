@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class AppService {
     return 'Hello World!';
   }
 
-  @Cron('*/2 * * * *') // Every 2 minutes
+  @Cron(CronExpression.EVERY_30_SECONDS) // Every 2 minutes
   handleKeepAlive() {
     const env = this.configService.get('NODE_ENV');
 
