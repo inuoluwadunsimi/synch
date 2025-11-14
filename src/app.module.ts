@@ -21,6 +21,7 @@ import { NotificationsModule } from './modules/notifcation/notification.module';
 import { SdkModule } from './modules/atm-sdk/sdk.module';
 import { SeederModule } from './modules/seeder/seeder.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 dotenv.config();
 
@@ -45,6 +46,16 @@ dotenv.config();
         },
       }),
       inject: [ConfigService],
+    }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: 'localhost',
+      port: 5432,
+      username: 'inuoluwadunsimi',
+      password: 'postgres',
+      database: 'metrics',
+      // entities: [LivenessEvent],
+      synchronize: true, // disable in production
     }),
 
     LoggerModule,

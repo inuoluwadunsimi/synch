@@ -237,4 +237,6 @@ export class AdminService {
 
     return atmsWithCash;
   }
+
+  public async getPredictedTopUps() {}
 }
