@@ -726,6 +726,8 @@ export class TasksService {
     return task;
   }
 
+  // Assuming this method is inside your service class
+
   public async generateDiagnosticReport(taskId: string) {
     const task = await this.tasksRepository.getTaskLog({ _id: taskId });
     if (!task) {
@@ -789,56 +791,79 @@ ${index + 1}. ${new Date(log.time).toISOString()}: ${log.healthStatus}`,
       )
       .join('\n');
 
-    // Construct comprehensive prompt for AI
-    const prompt = `Generate a detailed diagnostic report for the following ATM issue:
+    // --- MODIFIED PROMPT FOR FOCUSED JSON OUTPUT ---
+    const prompt = `Analyze the current ATM issue and the historical context provided. Your goal is to generate only a JSON object containing the Probable Issues (Root Cause Analysis) and the Recommended Fix Steps.
 
 **Current Issue Details:**
-- Task ID: ${task._id}
-- ATM ID: ${atm?._id || 'Unknown'}
-- ATM Location: ${atm?.location ? `[${atm.location.coordinates[0]}, ${atm.location.coordinates[1]}]` : 'Unknown'}
-- Current ATM Health Status: ${atm?.healthStatus || 'Unknown'}
-- Current ATM Activity Status: ${atm?.activitySatus || 'Unknown'}
 - Issue Type: ${task.taskTitle}
-- Task Type: ${task.taskType || 'Unknown'}
 - Issue Description: ${task.issueDescription || 'No description provided'}
+- Current ATM Health Status: ${atm?.healthStatus || 'Unknown'}
 - Current Status: ${task.statusDetails[task.statusDetails.length - 1]?.status || 'Unknown'}
-- Engineer Note: ${task.engineerNote || 'No notes yet'}
 - Date Reported: ${new Date(task.createdAt).toISOString()}
 
 **Recent ATM Health Status History (Last 5 entries):**
 ${healthStatusHistory || 'No recent health status data available'}
 
-**Historical Context (Similar Issues):**
+**Historical Context (Similar Fixed Cases):**
 ${historicalContext || 'No historical data available for this issue type'}
 
-**Total Similar Cases Fixed:** ${historicalTasksList.length}
+**Average Historical Fix Time:** ${this.calculateAverageFixTime(historicalTasksList)} hours
 
-Please provide a comprehensive diagnostic report with the following sections:
+**Instructions:**
+1.  Identify the 2-3 most probable technical causes for this specific issue.
+2.  Provide a step-by-step recommendation for the field engineer to resolve the issue, prioritizing steps from successful historical fixes.
+3.  **Output ONLY a valid JSON object** with the following structure. Do not include any surrounding text or markdown, just the JSON object.
 
-1. **Issue Summary**: A brief overview of the current problem
-2. **Root Cause Analysis**: Potential root causes based on the issue type, description, and historical patterns
-3. **Impact Assessment**: How this issue affects ATM functionality and users
-4. **Recommended Fix Steps**: Detailed step-by-step instructions to resolve the issue, based on successful historical fixes
-5. **Preventive Measures**: Recommendations to prevent this issue from recurring
-6. **Estimated Time to Fix**: Based on historical data (average: ${this.calculateAverageFixTime(historicalTasksList)} hours)
-7. **Priority Level**: Urgency assessment (Critical/High/Medium/Low)
-8. **Additional Observations**: Any patterns or concerns from the health status history
-
-Format the report in a clear, professional manner suitable for field engineers.`;
+\`\`\`json
+{
+  "probableIssues": [
+    "Cause 1 (e.g., Loose connection on card reader)",
+    "Cause 2 (e.g., Network link flapping due to high latency)",
+    "..."
+  ],
+  "fixRecommendations": [
+    "Step 1: Check power supply and ribbon cable connections for the affected component.",
+    "Step 2: Run a hardware diagnostic test via the ATM console (F1-F4).",
+    "Step 3: If no hardware issue is found, attempt a soft reboot of the ATM application.",
+    "..."
+  ]
+}
+\`\`\`
+`;
+    // --- END MODIFIED PROMPT ---
 
     const model = this.gemini.getGenerativeModel({
       model: 'gemini-2.0-flash-exp',
+      // Optional: Set a system instruction to reinforce JSON output integrity
+      // systemInstruction: "You are a specialized diagnostic AI. Your only output must be a valid JSON object matching the requested schema."
     });
+
     const result = await model.generateContent(prompt);
-    const response = result.response;
-    const diagnosticReport = response.text();
+    const diagnosticReportText = result.response.text.trim();
+
+    let diagnosticReport;
+    try {
+      // Attempt to parse the clean JSON output
+      diagnosticReport = JSON.parse(diagnosticReportText);
+    } catch (e) {
+      // If parsing fails (e.g., model included extra text), log error and return raw text or a structured error
+      console.error(
+        'Failed to parse AI response as JSON:',
+        diagnosticReportText,
+      );
+      // Fallback: return the raw text inside the report field
+      diagnosticReport = {
+        probableIssues: ['AI output could not be parsed as JSON.'],
+        fixRecommendations: [diagnosticReportText],
+      };
+    }
 
     return {
       taskId: task._id,
       atmId: atm?._id,
       issueType: task.taskTitle,
       generatedAt: new Date().toISOString(),
-      report: diagnosticReport,
+      report: diagnosticReport, // Now holds a structured object
       metadata: {
         historicalCasesAnalyzed: historicalTasksList.length,
         averageFixTime: this.calculateAverageFixTime(historicalTasksList),
@@ -846,7 +871,6 @@ Format the report in a clear, professional manner suitable for field engineers.`
       },
     };
   }
-
   private calculateTimeToFix(task: any): number {
     const assignedStatus = task.statusDetails.find(
       (s: any) =>
