@@ -734,12 +734,12 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    // Get ATM details
+    // Get ATM details for context (kept for health/activity status)
     const atm = await this.bankkRepository.getAtm({
       _id: task.atm as string,
     });
 
-    // Get historical tasks with the same title that were successfully fixed
+    // Get historical tasks with the same title that were successfully fixed (limit 10)
     const historicalTasks = await this.tasksRepository.getTaskLogs({
       filter: {
         taskTitle: task.taskTitle,
@@ -755,56 +755,26 @@ export class TasksService {
       ? historicalTasks
       : historicalTasks.data;
 
-    // Get recent issue logs for the ATM
-    const recentIssueLogs = await this.tasksRepository.getIssueLogs({
-      filter: {
-        atm: task.atm as string,
-      },
-      query: {
-        limit: 5,
-        sort: { time: -1 },
-      },
-    });
-
-    const recentIssueLogsList = Array.isArray(recentIssueLogs)
-      ? recentIssueLogs
-      : recentIssueLogs.data;
-
-    // Prepare historical context
+    // --- OPTIMIZATION: Simplified Historical Context Construction ---
     const historicalContext = historicalTasksList
       .map(
-        (historicalTask, index) => `
-Case ${index + 1}:
-- Issue Description: ${historicalTask.issueDescription || 'N/A'}
-- Engineer Note: ${historicalTask.engineerNote || 'N/A'}
-- Time to Fix: ${this.calculateTimeToFix(historicalTask)} hours
-- Status History: ${JSON.stringify(historicalTask.statusDetails)}
-`,
+        (historicalTask, index) =>
+          `Case ${index + 1} | Issue: "${historicalTask.issueDescription}" | Fix: "${historicalTask.engineerNote}" | Fix Time: ${this.calculateTimeToFix(historicalTask)} hrs`,
       )
       .join('\n');
 
-    // Prepare recent health status
-    const healthStatusHistory = recentIssueLogsList
-      .map(
-        (log, index) => `
-${index + 1}. ${new Date(log.time).toISOString()}: ${log.healthStatus}`,
-      )
-      .join('\n');
-
-    // --- MODIFIED PROMPT FOR FOCUSED JSON OUTPUT ---
+    // --- PROMPT FOR FOCUSED JSON OUTPUT ---
     const prompt = `Analyze the current ATM issue and the historical context provided. Your goal is to generate only a JSON object containing the Probable Issues (Root Cause Analysis) and the Recommended Fix Steps.
 
 **Current Issue Details:**
 - Issue Type: ${task.taskTitle}
+- Task Type: ${task.taskType || 'Unknown'}
 - Issue Description: ${task.issueDescription || 'No description provided'}
 - Current ATM Health Status: ${atm?.healthStatus || 'Unknown'}
-- Current Status: ${task.statusDetails[task.statusDetails.length - 1]?.status || 'Unknown'}
-- Date Reported: ${new Date(task.createdAt).toISOString()}
+- Current ATM Activity Status: ${atm?.activitySatus || 'Unknown'}
+- Current Task Status: ${task.statusDetails[task.statusDetails.length - 1]?.status || 'Unknown'}
 
-**Recent ATM Health Status History (Last 5 entries):**
-${healthStatusHistory || 'No recent health status data available'}
-
-**Historical Context (Similar Fixed Cases):**
+**Historical Context (Top ${historicalTasksList.length} Similar Fixed Cases):**
 ${historicalContext || 'No historical data available for this issue type'}
 
 **Average Historical Fix Time:** ${this.calculateAverageFixTime(historicalTasksList)} hours
@@ -830,35 +800,50 @@ ${historicalContext || 'No historical data available for this issue type'}
 }
 \`\`\`
 `;
-    // --- END MODIFIED PROMPT ---
+    // --- END PROMPT ---
 
     const model = this.gemini.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      // Optional: Set a system instruction to reinforce JSON output integrity
-      // systemInstruction: "You are a specialized diagnostic AI. Your only output must be a valid JSON object matching the requested schema."
+      model: 'gemini-2.5-flash', // Using the specified model
     });
 
     const result = await model.generateContent(prompt);
     const diagnosticReportText = result.response.text().trim();
-    let diagnosticReport;
+    let diagnosticReport: {
+      probableIssues: string[];
+      fixRecommendations: string[];
+    };
+
+    // --- NEW LOGIC: Robust JSON Parsing with Markdown Stripping ---
+    let cleanJsonString = diagnosticReportText;
+
+    // Check for and strip common markdown code fences (```json or ```)
+    if (diagnosticReportText.startsWith('```')) {
+      cleanJsonString = diagnosticReportText
+        .replace(/^```json\s*/, '') // Remove starting fence '```json' or '```'
+        .replace(/^```\s*/, '')
+        .replace(/\s*```$/, ''); // Remove ending fence '```'
+    }
+
     try {
-      // Attempt to parse the clean JSON output
-      diagnosticReport = JSON.parse(diagnosticReportText);
+      // Attempt to parse the cleaned string
+      diagnosticReport = JSON.parse(cleanJsonString);
     } catch (e) {
-      // If parsing fails (e.g., model included extra text), log error and return raw text or a structured error
+      // Fallback: log the failure and return a structured error response
       console.error(
-        'Failed to parse AI response as JSON:',
-        diagnosticReportText,
+        'Failed to parse AI response as JSON after cleaning:',
+        cleanJsonString,
       );
-      // Fallback: return the raw text inside the report field
       diagnosticReport = {
-        probableIssues: ['AI output could not be parsed as JSON.'],
+        probableIssues: [
+          'AI output could not be parsed as JSON. Check logs for details.',
+        ],
         fixRecommendations: [diagnosticReportText],
       };
     }
 
+    // --- FINAL RETURN STRUCTURE ---
     return {
-      ...diagnosticReport,
+      ...diagnosticReport, // Spread the structured AI output (probableIssues, fixRecommendations)
     };
   }
   private calculateTimeToFix(task: any): number {
