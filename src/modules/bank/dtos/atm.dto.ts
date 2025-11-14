@@ -11,7 +11,8 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../user/interfaces/enums/user.enums';
 import { Type } from 'class-transformer';
-import { AtmTransactionType } from '../interfaces/atm.enums';
+import { AtmActivityStatus, AtmTransactionType } from '../interfaces/atm.enums';
+import { ActivityStatus } from '../../user/schemas/user.schema';
 
 export class GeolocationDTO {
   @IsString()
@@ -48,4 +49,10 @@ export class CreateATMTransactioon {
   @ApiProperty({ required: true, type: Number })
   @IsNumber()
   n200: number;
+}
+
+export class ToggleAtmOnlineDto {
+  @ApiProperty({ example: true, required: true, enum: AtmActivityStatus })
+  @IsEnum(AtmActivityStatus)
+  activityStatus: AtmActivityStatus;
 }

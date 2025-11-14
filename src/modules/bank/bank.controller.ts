@@ -26,7 +26,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/auth.guard';
 import { BankService } from './bank.service';
-import { CreateATMDto } from './dtos/atm.dto';
+import { CreateATMDto, ToggleAtmOnlineDto } from './dtos/atm.dto';
 import { ATM } from './schemas/atm.schema';
 import { AtmActivityStatus, AtmHealthStatus } from './interfaces/atm.enums';
 import { GetATMQuery } from './interfaces/atm.interfaces';
@@ -88,5 +88,21 @@ export class BankController {
   })
   public async getAtmData(@Param('atmId') atmId: string) {
     return await this.bankService.getAtmData(atmId);
+  }
+
+  @Put('health/atm/:atmId')
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: " 'Get all atms successfully",
+    type: ATM,
+  })
+  public async toggleAtmActivityStats(
+    @Param('atmId') atmId: string,
+    @Body() body: ToggleAtmOnlineDto,
+  ) {
+    return await this.bankService.toggleOnlineStatus(
+      atmId,
+      body.activityStatus,
+    );
   }
 }

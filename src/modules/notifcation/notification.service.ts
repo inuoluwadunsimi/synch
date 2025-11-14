@@ -12,6 +12,8 @@ import * as fs from 'fs';
 import { Expo, ExpoPushMessage, ExpoPushReceipt } from 'expo-server-sdk';
 import { TaskTitle } from '../tasks/interface/tasks.enums';
 import { AtmHealthStatus } from '../bank/interfaces/atm.enums';
+import axios from 'axios';
+import { Secrets } from '../../resources/secrets';
 
 const templateDir = path.join(__dirname, 'templates');
 
@@ -21,6 +23,11 @@ export interface PushNotificationData {
   taskId: string;
   status: AtmHealthStatus;
   token: string;
+}
+
+export interface SendTextWhatsappMessage {
+  phoneNumber: string;
+  content: string;
 }
 
 @Injectable()
@@ -62,7 +69,7 @@ export class NotificationService {
   public async sendPushNotification(data: PushNotificationData): Promise<void> {
     if (!Expo.isExpoPushToken(data.token)) {
       console.error('Invalid Expo push token!');
-      process.exit(1);
+      return;
     }
 
     const chunks = this.expo.chunkPushNotifications([
@@ -78,12 +85,45 @@ export class NotificationService {
         body: 'Tap to view alert',
       },
     ]);
+    console.log(chunks);
 
     const tickets = [];
 
     for (const chunk of chunks) {
       const ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
       tickets.push(...ticketChunk);
+    }
+  }
+
+  public async sendWhatsappMessage(
+    body: SendTextWhatsappMessage,
+  ): Promise<void> {
+    const url = `https://graph.facebook.com/v15.0/${this.configService.get(Secrets.WHATSAPP_PHONE_NUMBER_ID)}/messages`;
+    const headers = {
+      Authorization: `Bearer ${this.configService.get(Secrets.WHATSAPP_ACCESS_TOKEN)}`,
+      'Content-Type': 'application/json',
+    };
+
+    const data = {
+      messaging_product: 'whatsapp',
+      to: body.phoneNumber, // Full international format
+      type: 'text',
+      recipient_type: 'individual',
+      text: {
+        body: body.content,
+      },
+    };
+
+    try {
+      const response = await axios.post(url, data, { headers });
+
+      console.log('Message sent:', response.data);
+    } catch (error: any) {
+      console.error(
+        'Error sending message:',
+        error.response ? error.response.data : error.message,
+      );
+      throw new Error('Error sending message');
     }
   }
 }

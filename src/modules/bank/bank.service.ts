@@ -8,7 +8,8 @@ import { CreateATMDto } from './dtos/atm.dto';
 import { GetATMQuery } from './interfaces/atm.interfaces';
 import { BaseQuery } from '../../resources/interfaces';
 import { TasksRepository } from '../tasks/tasks.repository';
-import { AtmHealthStatus } from './interfaces/atm.enums';
+import { AtmActivityStatus, AtmHealthStatus } from './interfaces/atm.enums';
+import { ActivityStatus } from '../user/schemas/user.schema';
 
 @Injectable()
 export class BankService {
@@ -177,6 +178,17 @@ export class BankService {
     //     data: atmsWithUptime,
     //   };
     // }
+  }
+
+  public async toggleOnlineStatus(atmId: string, status: AtmActivityStatus) {
+    console.log(atmId, status);
+    const newatm = await this.bankRepository.updateAtm(
+      { _id: atmId },
+      { activitySatus: status },
+    );
+    console.log(newatm);
+
+    return newatm;
   }
 
   public async getAtmData(atmId: string) {

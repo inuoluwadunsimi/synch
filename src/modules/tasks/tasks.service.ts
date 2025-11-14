@@ -15,13 +15,14 @@ import {
 } from './interface/tasks.requests';
 import { UserRepository } from '../user/user.repository';
 import { UserRole } from '../user/interfaces/enums/user.enums';
-import { ActivityStatus } from '../user/schemas/user.schema';
+import { ActivityStatus, UserDocument } from '../user/schemas/user.schema';
 import { BankRepository } from '../bank/bank.repository';
 import { NotificationService } from '../notifcation/notification.service';
 import { AtmHealthStatus } from '../bank/interfaces/atm.enums';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Secrets } from '../../resources/secrets';
 import { ConfigService } from '@nestjs/config';
+import { query } from 'express';
 
 @Injectable()
 export class TasksService {
@@ -50,11 +51,13 @@ export class TasksService {
 
     const statusMap: Record<EngineerTasksEnums, TaskStatusEnums[]> = {
       [EngineerTasksEnums.ASSIGNED]: [TaskStatusEnums.ASSIGNED],
-      [EngineerTasksEnums.UNRESOLVED]: [TaskStatusEnums.REASSIGNED],
+      [EngineerTasksEnums.UNRESOLVED]: [TaskStatusEnums.UNRESOLVED],
       [EngineerTasksEnums.RESOLVED]: [TaskStatusEnums.FIXED],
       [EngineerTasksEnums.ACTIVE]: [TaskStatusEnums.IN_PROGRESS],
       [EngineerTasksEnums.REASSIGNED]: [TaskStatusEnums.REASSIGNED],
     };
+
+    console.log(userId);
 
     const statuses = statusMap[status];
     if (!statuses) return null;
@@ -77,7 +80,7 @@ export class TasksService {
     }
 
     // Reuse the same repository call
-    return this.tasksRepository.getTaskLogs({
+    const lagos = await this.tasksRepository.getTaskLogs({
       filter,
       query: {
         ...query,
@@ -85,6 +88,7 @@ export class TasksService {
         population: ['atm'],
       },
     });
+    return lagos;
   }
 
   public async getAllTasks(data: {
@@ -149,8 +153,18 @@ export class TasksService {
           ],
         },
       },
+      query: {
+        population: ['assignee'],
+      },
     })) as TasksLogsDocument[];
     if (existingTask && existingTask.length > 0) {
+      // await this.notificationService.sendPushNotification({
+      //   taskTitle: data.taskTitle!,
+      //   taskId: existingTask[0].id,
+      //   atmId: data.atm,
+      //   status: data.healthStatus,
+      //   token: (existingTask[0].assignee as UserDocument).expoToken,
+      // });
       return {
         issueLog: log,
         task: existingTask[0],
@@ -168,7 +182,7 @@ export class TasksService {
       atmId: data.atm,
       taskId: assignmentResult.task.id,
       status: data.healthStatus,
-      token: (assignmentResult.assignedTo as any).expoPushToken,
+      token: (assignmentResult.assignedTo as any).expoToken,
     });
 
     return {
@@ -642,17 +656,17 @@ export class TasksService {
       return;
     }
 
-    await this.tasksRepository.updateTaskLog(
-      { _id: unresolvedTask._id },
-      {
-        $push: {
-          statusDetails: {
-            status: TaskStatusEnums.REASSIGNED,
-            time: new Date(),
-          },
-        },
-      },
-    );
+    // await this.tasksRepository.updateTaskLog(
+    //   { _id: unresolvedTask._id },
+    //   {
+    //     $push: {
+    //       statusDetails: {
+    //         status: TaskStatusEnums.REASSIGNED,
+    //         time: new Date(),
+    //       },
+    //     },
+    //   },
+    // );
 
     await this.tasksRepository.createTaskLog({
       assignee: mostExperiencedEngineer.engineer._id,
@@ -681,7 +695,10 @@ export class TasksService {
   }
 
   public async getTaskById(taskId: string) {
-    const task = await this.tasksRepository.getTaskLog({ _id: taskId });
+    const task = await this.tasksRepository.getTaskLog(
+      { _id: taskId },
+      { population: ['assignee', 'atm'] },
+    );
     if (!task) {
       throw new NotFoundException('Task not found');
     }

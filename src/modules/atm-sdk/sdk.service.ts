@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { BankService } from '../bank/bank.service';
 import {
   AtmActivityStatus,
@@ -24,7 +24,7 @@ export class SdkService {
     private readonly taskService: TasksService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_5_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   public async emitLiveness() {
     this.logger.log('Emitting liveness checks to online ATMs...');
     const onlineAtms = (await this.bankRepository.getAtms({
@@ -41,7 +41,7 @@ export class SdkService {
     }
   }
 
-  // @Cron(CronExpression.EVERY_5_SECONDS)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   public async checkLiveness() {
     const atms = (await this.bankRepository.getAtms({
       filter: {},
@@ -116,7 +116,7 @@ export class SdkService {
   }
 
   public async withdrawCash(data: WithdrawalDto) {
-    const { atmId, pin, amount, cardJammed } = data;
+    const { atmId, pin, amount, cardJammed, cashJammed } = data;
     const withdrawalAmount = parseFloat(amount);
 
     if (cardJammed) {
@@ -160,10 +160,9 @@ export class SdkService {
 
         this.wrongPinAttempts.delete(atmId);
 
-        return {
-          success: false,
-          message: 'Card retained. Please contact your bank.',
-        };
+        throw new BadRequestException(
+          'Card retained due to multiple wrong PIN attempts.',
+        );
       }
 
       return {
@@ -185,6 +184,14 @@ export class SdkService {
         `No cash inventory found for ATM ${atmId}. Cannot process withdrawal.`,
       );
 
+      await this.taskService.registerIssueLogs({
+        atm: atmId,
+        healthStatus: AtmHealthStatus.WARNING,
+        taskTitle: TaskTitle.LOW_CASH,
+        issueDescription: `Insufficient cash in ATM. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
+        status: TaskStatusEnums.ASSIGNED,
+      });
+
       return {
         success: false,
         message: 'Unable to process withdrawal. Please try another ATM.',
@@ -192,6 +199,7 @@ export class SdkService {
     }
 
     if (latestCashInventory.totalAmount < withdrawalAmount) {
+      console.log('kokokokoko');
       await this.taskService.registerIssueLogs({
         atm: atmId,
         healthStatus: AtmHealthStatus.WARNING,
@@ -208,7 +216,6 @@ export class SdkService {
         success: false,
         message:
           'Insufficient cash available. Please try a smaller amount or another ATM.',
-        availableCash: latestCashInventory.totalAmount,
       };
     }
 
@@ -257,6 +264,23 @@ export class SdkService {
     this.logger.log(
       `Successful withdrawal of ${amount} from ATM ${atmId}. Dispensed: ${denominationBreakdown.n1000}x1000, ${denominationBreakdown.n500}x500, ${denominationBreakdown.n200}x200`,
     );
+
+    if (cashJammed) {
+      await this.taskService.registerIssueLogs({
+        atm: atmId,
+        healthStatus: AtmHealthStatus.CRITICAL,
+        taskTitle: TaskTitle.CASH_JAMMED,
+        issueDescription: 'Cash jammed in ATM dispenser',
+        status: TaskStatusEnums.ASSIGNED,
+      });
+
+      this.logger.error(`Cash  jammed at ATM ${atmId}. Critical issue logged.`);
+
+      return {
+        success: false,
+        message: 'Cash jammed. Please contact bank support.',
+      };
+    }
 
     return {
       success: true,

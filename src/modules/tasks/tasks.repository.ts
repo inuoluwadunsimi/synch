@@ -117,6 +117,10 @@ export class TasksRepository {
       mongoQuery.sort(query.sort);
     }
 
+    if (query?.population) {
+      mongoQuery.populate(query.population);
+    }
+
     return mongoQuery.exec();
   }
 

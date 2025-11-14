@@ -1,90 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { faker } from '@faker-js/faker';
+import { Faker } from '@faker-js/faker'; // Import the type for the faker object
 import moment from 'moment';
 import {
   TasksLogs,
   TasksLogsDocument,
 } from '../tasks/schemas/tasks.logs.schema';
 import { StatusTrail } from '../tasks/schemas/status.trail.schema';
-
-// Define a function or map for realistic descriptions
-const getIssueDescription = (taskTitle: TaskTitle): string => {
-  const descriptions: { [key in TaskTitle]: string[] } = {
-    [TaskTitle.NETWORK_OUTAGE]: [
-      'ATM is offline and unable to connect to the bank host. Check WAN link status.',
-      'Intermittent connection drops reported. Transactions are failing during peak hours.',
-      'The primary network link is down. Failover to secondary link is not initiating.',
-      'No TCP/IP communication possible with the core banking system.',
-    ],
-    [TaskTitle.LOW_CASH]: [
-      'Cash cassette 2 is running low (below 10%). Urgent replenishment required.',
-      'Low withdrawal limits have been enforced due to critical cash levels in all cassettes.',
-      'Hopper is near empty. ATM needs immediate cash loading before end of day.',
-    ],
-    [TaskTitle.CARD_RETAINED]: [
-      'Card slot is jammed after a customer transaction. Card retained. Security required for retrieval.',
-      'Card reader failed to return card; device logs show a mechanical error during ejection.',
-      'Customer reported card was retained during an inquiry. Device must be inspected.',
-    ],
-    [TaskTitle.CARD_JAMMED]: [
-      'Card reader error: Card is stuck inside the input slot, preventing further use.',
-      'Failing to read cards correctly; customer reports difficulty inserting and removing card.',
-    ],
-    [TaskTitle.CARD_EJECT_FAILURE]: [
-      'Eject mechanism failure. Card presented but not pushed out completely.',
-      'Card is sticking out partially after transaction. Check the card transport belt.',
-    ],
-    [TaskTitle.CASH_JAMMED]: [
-      'Dispenser mechanism error. Notes jammed in the exit shutter. Manual intervention needed.',
-      'Cash dispenser reports a failure to bundle and present notes. Possible foreign object detected.',
-      'Multiple recent transactions failed due to cash stacking error within the dispenser.',
-    ],
-  };
-
-  const relevantDescriptions = descriptions[taskTitle];
-  return faker.helpers.arrayElement(relevantDescriptions);
-};
-
-// Add this helper function to your seeder file
-const generateEngineerNote = (taskTitle: TaskTitle): string => {
-  const resolutions: { [key in TaskTitle]: string[] } = {
-    [TaskTitle.NETWORK_OUTAGE]: [
-      'Rebooted router and confirmed WAN link is stable. Adjusted primary link DNS settings.',
-      'Identified and replaced faulty network interface card (NIC). Connection to host is now stable.',
-      'Performed full system reboot and validated communication with the banking core via diagnostic tool.',
-      'Rerouted network cable to port 4 on the switch, restoring connectivity.',
-    ],
-    [TaskTitle.LOW_CASH]: [
-      'Replenished all cassettes (1, 2, 3, and 4) to 100%. Tested successful dispensing of 40 notes.',
-      'Loaded cash cassette 2. Cash sensor calibration performed successfully.',
-      'Completed full cash replenishment and reset cash levels in the software dashboard.',
-    ],
-    [TaskTitle.CARD_RETAINED]: [
-      'Accessed security cartridge, retrieved customer card, and securely stored it. Card reader firmware updated.',
-      'Inspected and cleaned the card transport mechanism. Confirmed successful card reading and ejection test cycle.',
-    ],
-    [TaskTitle.CARD_JAMMED]: [
-      'Removed foreign object (paper clip) from the card reader throat. Calibrated card sensors.',
-      'Replaced the magnetic stripe read head. Passed 5 consecutive card tests.',
-    ],
-    [TaskTitle.CARD_EJECT_FAILURE]: [
-      'Adjusted the card transport belt tension. Tested successful ejection cycle 10 times.',
-      'Replaced the worn-out card exit shutter component. Card ejects smoothly now.',
-    ],
-    [TaskTitle.CASH_JAMMED]: [
-      'Cleared notes jammed in the dispensing throat. Ran a full cash test cycle.',
-      'Replaced the friction wheel in the dispenser unit. Successfully dispensed $500 in various denominations.',
-      'Performed dispenser diagnostic reset. Issue resolved, confirmed with test transactions.',
-    ],
-  };
-
-  const relevantResolutions = resolutions[taskTitle];
-  return faker.helpers.arrayElement(relevantResolutions);
-};
-
-// Import your schemas, enums, and transition rules
 import {
   TaskTitle,
   TaskType,
@@ -105,12 +28,85 @@ export class TasksLogsSeeder {
     private readonly atmModel: Model<AtmDocument>,
   ) {}
 
-  /**
-   * Generates a realistic, time-ordered status trail with valid transitions.
-   * @param startDate The starting time for the trail (when the task was created).
-   * @returns A StatusTrail array.
-   */
-  private generateStatusTrail(startDate: Date): StatusTrail[] {
+  // -------------------------------------------------------------
+  // 1. HELPER FUNCTIONS MOVED INSIDE THE CLASS
+  //    (Now accept a 'faker' argument)
+  // -------------------------------------------------------------
+
+  private getIssueDescription(faker: Faker, taskTitle: TaskTitle): string {
+    const descriptions: { [key in TaskTitle]: string[] } = {
+      [TaskTitle.NETWORK_OUTAGE]: [
+        'ATM is offline and unable to connect to the bank host. Check WAN link status.',
+        'Intermittent connection drops reported. Transactions are failing during peak hours.',
+        'The primary network link is down. Failover to secondary link is not initiating.',
+        'No TCP/IP communication possible with the core banking system.',
+      ],
+      [TaskTitle.LOW_CASH]: [
+        'Cash cassette 2 is running low (below 10%). Urgent replenishment required.',
+        'Low withdrawal limits have been enforced due to critical cash levels in all cassettes.',
+        'Hopper is near empty. ATM needs immediate cash loading before end of day.',
+      ],
+      [TaskTitle.CARD_RETAINED]: [
+        'Card slot is jammed after a customer transaction. Card retained. Security required for retrieval.',
+        'Card reader failed to return card; device logs show a mechanical error during ejection.',
+        'Customer reported card was retained during an inquiry. Device must be inspected.',
+      ],
+      [TaskTitle.CARD_JAMMED]: [
+        'Card reader error: Card is stuck inside the input slot, preventing further use.',
+        'Failing to read cards correctly; customer reports difficulty inserting and removing card.',
+      ],
+      [TaskTitle.CARD_EJECT_FAILURE]: [
+        'Eject mechanism failure. Card presented but not pushed out completely.',
+        'Card is sticking out partially after transaction. Check the card transport belt.',
+      ],
+      [TaskTitle.CASH_JAMMED]: [
+        'Dispenser mechanism error. Notes jammed in the exit shutter. Manual intervention needed.',
+        'Cash dispenser reports a failure to bundle and present notes. Possible foreign object detected.',
+        'Multiple recent transactions failed due to cash stacking error within the dispenser.',
+      ],
+    };
+
+    const relevantDescriptions = descriptions[taskTitle];
+    return faker.helpers.arrayElement(relevantDescriptions);
+  }
+
+  private generateEngineerNote(faker: Faker, taskTitle: TaskTitle): string {
+    const resolutions: { [key in TaskTitle]: string[] } = {
+      [TaskTitle.NETWORK_OUTAGE]: [
+        'Rebooted router and confirmed WAN link is stable. Adjusted primary link DNS settings.',
+        'Identified and replaced faulty network interface card (NIC). Connection to host is now stable.',
+        'Performed full system reboot and validated communication with the banking core via diagnostic tool.',
+        'Rerouted network cable to port 4 on the switch, restoring connectivity.',
+      ],
+      [TaskTitle.LOW_CASH]: [
+        'Replenished all cassettes (1, 2, 3, and 4) to 100%. Tested successful dispensing of 40 notes.',
+        'Loaded cash cassette 2. Cash sensor calibration performed successfully.',
+        'Completed full cash replenishment and reset cash levels in the software dashboard.',
+      ],
+      [TaskTitle.CARD_RETAINED]: [
+        'Accessed security cartridge, retrieved customer card, and securely stored it. Card reader firmware updated.',
+        'Inspected and cleaned the card transport mechanism. Confirmed successful card reading and ejection test cycle.',
+      ],
+      [TaskTitle.CARD_JAMMED]: [
+        'Removed foreign object (paper clip) from the card reader throat. Calibrated card sensors.',
+        'Replaced the magnetic stripe read head. Passed 5 consecutive card tests.',
+      ],
+      [TaskTitle.CARD_EJECT_FAILURE]: [
+        'Adjusted the card transport belt tension. Tested successful ejection cycle 10 times.',
+        'Replaced the worn-out card exit shutter component. Card ejects smoothly now.',
+      ],
+      [TaskTitle.CASH_JAMMED]: [
+        'Cleared notes jammed in the dispensing throat. Ran a full cash test cycle.',
+        'Replaced the friction wheel in the dispenser unit. Successfully dispensed $500 in various denominations.',
+        'Performed dispenser diagnostic reset. Issue resolved, confirmed with test transactions.',
+      ],
+    };
+
+    const relevantResolutions = resolutions[taskTitle];
+    return faker.helpers.arrayElement(relevantResolutions);
+  }
+
+  private generateStatusTrail(faker: Faker, startDate: Date): StatusTrail[] {
     const trail: StatusTrail[] = [];
     let currentTime = moment(startDate);
     let currentStatus: TaskStatusEnums = TaskStatusEnums.ASSIGNED;
@@ -132,34 +128,29 @@ export class TasksLogsSeeder {
     // 2. Loop to build the trail
     while (currentStatus !== finalStatus && trail.length < 5) {
       const allowedNext = allowedTransitions[currentStatus].filter(
-        (status) => status !== TaskStatusEnums.ASSIGNED, // ASSIGNED is only the start
+        (status) => status !== TaskStatusEnums.ASSIGNED,
       );
 
-      // If the final status is in the allowed next steps, take it or choose a path toward it.
       let nextStatus: TaskStatusEnums;
 
       if (allowedNext.includes(finalStatus) && faker.datatype.boolean()) {
-        nextStatus = finalStatus; // Reach the goal
+        nextStatus = finalStatus;
       } else if (allowedNext.length > 0) {
         nextStatus = faker.helpers.arrayElement(allowedNext);
       } else {
-        // Should not happen with current logic, but as a safeguard.
         break;
       }
 
-      // Time progression: 5 minutes to 4 hours
+      // Time progression: 15 minutes to 4 hours
       const minutesToAdd = faker.number.int({ min: 15, max: 240 });
       currentTime = currentTime.add(minutesToAdd, 'minutes');
 
-      // Add the new status
       trail.push({
         status: nextStatus,
         time: currentTime.toDate(),
       });
       currentStatus = nextStatus;
 
-      // Special case: If the task was REASSIGNED, the next log will belong to a new TaskLogs entry.
-      // We stop the trail here as the logic asks for trails ending in those states.
       if (currentStatus === TaskStatusEnums.REASSIGNED) {
         break;
       }
@@ -168,7 +159,14 @@ export class TasksLogsSeeder {
     return trail;
   }
 
+  // -------------------------------------------------------------
+  // 2. SEED METHOD USES LOCAL FAKER VARIABLE
+  // -------------------------------------------------------------
+
   async seed(): Promise<void> {
+    // Dynamically import faker here, ONLY inside the async method
+    const { faker } = await import('@faker-js/faker');
+
     // 1. Clear existing data
     await this.tasksLogsModel.deleteMany({});
     console.log('🗑️ Cleared existing TasksLogs data.');
@@ -210,7 +208,8 @@ export class TasksLogsSeeder {
           ? TaskType.SOFTWARE
           : faker.helpers.arrayElement(taskTypes);
 
-      const statusDetails = this.generateStatusTrail(createdAt);
+      // Pass the locally imported 'faker' object to the helper methods
+      const statusDetails = this.generateStatusTrail(faker, createdAt);
 
       // The updatedAt timestamp should be the time of the last status update
       const updatedAt = statusDetails[statusDetails.length - 1].time;
@@ -221,12 +220,13 @@ export class TasksLogsSeeder {
         taskTitle: taskTitle,
         taskType: taskType,
         atm: faker.helpers.arrayElement(atmIds),
-        issueDescription: getIssueDescription(taskTitle),
+        // Pass faker to helpers
+        issueDescription: this.getIssueDescription(faker, taskTitle),
         statusDetails: statusDetails,
         engineerNote:
           statusDetails[statusDetails.length - 1].status ===
           TaskStatusEnums.FIXED
-            ? generateEngineerNote(taskTitle)
+            ? this.generateEngineerNote(faker, taskTitle) // Pass faker to helpers
             : '',
         createdAt: createdAt,
         updatedAt: updatedAt,
@@ -240,3 +240,10 @@ export class TasksLogsSeeder {
     console.log(`✅ Successfully seeded ${numberOfTasks} TasksLogs.`);
   }
 }
+
+// -------------------------------------------------------------
+// 3. REMOVE STANDALONE HELPER FUNCTIONS FROM THE FILE
+// (The standalone functions 'getIssueDescription',
+// 'generateEngineerNote', and the original 'generateStatusTrail'
+// are now obsolete and should be deleted from your file).
+// -------------------------------------------------------------
