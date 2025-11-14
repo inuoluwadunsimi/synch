@@ -190,7 +190,7 @@ export class TasksController {
     });
   }
 
-  @Get('atm/history')
+  @Get('atm/history/:atmId')
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'atm created successfully',
