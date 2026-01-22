@@ -26,6 +26,10 @@ import {
 } from '@nestjs/swagger';
 import { SdkService } from './sdk.service';
 import { EndTransactionDto, WithdrawalDto } from './dtos/withdrawal.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '../auth/guards/auth.guard';
+import { Auth } from 'src/decorators/auth.decorator';
+import { IUser } from '../auth/interfaces/interfaces';
 
 @Controller('sdk')
 @ApiTags('ATM SDK')
@@ -72,17 +76,26 @@ export class SdkController {
       },
     },
   })
-  public async withdrawCash(@Body() withdrawalDto: WithdrawalDto) {
-    return await this.sdkService.withdrawCash(withdrawalDto);
+  @UseGuards(JwtAuthGuard)
+  public async withdrawCash(
+    @Body() withdrawalDto: WithdrawalDto,
+    @Auth() user: IUser,
+  ) {
+    return await this.sdkService.withdrawCash(withdrawalDto, user.userId);
   }
 
   @Post('transaction/end')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Process ATM cash withdrawal' })
-  public async endTransaction(@Body() body: EndTransactionDto) {
+  @UseGuards(JwtAuthGuard)
+  public async endTransaction(
+    @Body() body: EndTransactionDto,
+    @Auth() user: IUser,
+  ) {
     return await this.sdkService.endTransaction(
       body.simulateCardEjectFailure,
       body.atm,
+      user.userId,
     );
   }
 }

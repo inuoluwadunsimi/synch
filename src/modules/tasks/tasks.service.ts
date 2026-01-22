@@ -152,7 +152,7 @@ export class TasksService {
     });
   }
 
-  public async registerIssueLogs(data: CreateNewLog) {
+  public async registerIssueLogs(data: CreateNewLog, user?: string) {
     const log = await this.tasksRepository.createIssueLog({
       atm: data.atm,
       healthStatus: data.healthStatus,
@@ -190,7 +190,7 @@ export class TasksService {
       };
     }
 
-    const assignmentResult = await this.createAndAssignTasks(data);
+    const assignmentResult = await this.createAndAssignTasks(data, user);
     log.task = assignmentResult.task.id;
     await log.save();
 
@@ -212,10 +212,16 @@ export class TasksService {
     };
   }
 
-  public async createAndAssignTasks(data: CreateNewLog) {
+  public async createAndAssignTasks(data: CreateNewLog, user: string) {
     const atm = await this.bankkRepository.getAtm({ _id: data.atm });
     if (!atm) {
       throw new NotFoundException('ATM not found');
+    }
+
+    // simulate the engineer selection to be the user testing
+    const selectedEngineer = await this.userRepository.getUser({ _id: user });
+    if (!selectedEngineer) {
+      throw new NotFoundException('Engineer not found');
     }
 
     const nearbyEngineers = await this.userRepository.getUsers({
@@ -335,10 +341,10 @@ export class TasksService {
       (a, b) => a.totalEstimatedTime - b.totalEstimatedTime,
     );
 
-    const selectedEngineer = engineerWorkloads[0].engineer;
+    // const selectedEngineer = engineerWorkloads[0].engineer;
 
     const task = await this.tasksRepository.createTaskLog({
-      assignee: selectedEngineer._id,
+      assignee: user,
       atm: data.atm,
       issueDescription: data.issueDescription,
       taskTitle: data.taskTitle,

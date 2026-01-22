@@ -115,18 +115,21 @@ export class SdkService {
     return dispensed;
   }
 
-  public async withdrawCash(data: WithdrawalDto) {
+  public async withdrawCash(data: WithdrawalDto, user: string) {
     const { atmId, pin, amount, cardJammed, cashJammed } = data;
     const withdrawalAmount = parseFloat(amount);
 
     if (cardJammed) {
-      await this.taskService.registerIssueLogs({
-        atm: atmId,
-        healthStatus: AtmHealthStatus.CRITICAL,
-        taskTitle: TaskTitle.CARD_JAMMED,
-        issueDescription: 'Card jammed in ATM dispenser',
-        status: TaskStatusEnums.ASSIGNED,
-      });
+      await this.taskService.registerIssueLogs(
+        {
+          atm: atmId,
+          healthStatus: AtmHealthStatus.CRITICAL,
+          taskTitle: TaskTitle.CARD_JAMMED,
+          issueDescription: 'Card jammed in ATM dispenser',
+          status: TaskStatusEnums.ASSIGNED,
+        },
+        user,
+      );
 
       this.logger.error(`Card jammed at ATM ${atmId}. Critical issue logged.`);
 
@@ -146,13 +149,16 @@ export class SdkService {
       );
 
       if (newAttempts >= this.MAX_PIN_ATTEMPTS) {
-        await this.taskService.registerIssueLogs({
-          atm: atmId,
-          healthStatus: AtmHealthStatus.CRITICAL,
-          taskTitle: TaskTitle.CARD_RETAINED,
-          issueDescription: `Card retained after ${this.MAX_PIN_ATTEMPTS} consecutive wrong PIN attempts`,
-          status: TaskStatusEnums.ASSIGNED,
-        });
+        await this.taskService.registerIssueLogs(
+          {
+            atm: atmId,
+            healthStatus: AtmHealthStatus.CRITICAL,
+            taskTitle: TaskTitle.CARD_RETAINED,
+            issueDescription: `Card retained after ${this.MAX_PIN_ATTEMPTS} consecutive wrong PIN attempts`,
+            status: TaskStatusEnums.ASSIGNED,
+          },
+          user,
+        );
 
         this.logger.error(
           `Card retained at ATM ${atmId} after ${this.MAX_PIN_ATTEMPTS} wrong PIN attempts`,
@@ -184,13 +190,16 @@ export class SdkService {
         `No cash inventory found for ATM ${atmId}. Cannot process withdrawal.`,
       );
 
-      await this.taskService.registerIssueLogs({
-        atm: atmId,
-        healthStatus: AtmHealthStatus.WARNING,
-        taskTitle: TaskTitle.LOW_CASH,
-        issueDescription: `Insufficient cash in ATM. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
-        status: TaskStatusEnums.ASSIGNED,
-      });
+      await this.taskService.registerIssueLogs(
+        {
+          atm: atmId,
+          healthStatus: AtmHealthStatus.WARNING,
+          taskTitle: TaskTitle.LOW_CASH,
+          issueDescription: `Insufficient cash in ATM. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
+          status: TaskStatusEnums.ASSIGNED,
+        },
+        user,
+      );
 
       return {
         success: false,
@@ -200,13 +209,16 @@ export class SdkService {
 
     if (latestCashInventory.totalAmount < withdrawalAmount) {
       console.log('kokokokoko');
-      await this.taskService.registerIssueLogs({
-        atm: atmId,
-        healthStatus: AtmHealthStatus.WARNING,
-        taskTitle: TaskTitle.LOW_CASH,
-        issueDescription: `Insufficient cash in ATM. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
-        status: TaskStatusEnums.ASSIGNED,
-      });
+      await this.taskService.registerIssueLogs(
+        {
+          atm: atmId,
+          healthStatus: AtmHealthStatus.WARNING,
+          taskTitle: TaskTitle.LOW_CASH,
+          issueDescription: `Insufficient cash in ATM. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
+          status: TaskStatusEnums.ASSIGNED,
+        },
+        user,
+      );
 
       this.logger.error(
         `Low cash at ATM ${atmId}. Available: ${latestCashInventory.totalAmount}, Requested: ${withdrawalAmount}`,
@@ -266,13 +278,16 @@ export class SdkService {
     );
 
     if (cashJammed) {
-      await this.taskService.registerIssueLogs({
-        atm: atmId,
-        healthStatus: AtmHealthStatus.CRITICAL,
-        taskTitle: TaskTitle.CASH_JAMMED,
-        issueDescription: 'Cash jammed in ATM dispenser',
-        status: TaskStatusEnums.ASSIGNED,
-      });
+      await this.taskService.registerIssueLogs(
+        {
+          atm: atmId,
+          healthStatus: AtmHealthStatus.CRITICAL,
+          taskTitle: TaskTitle.CASH_JAMMED,
+          issueDescription: 'Cash jammed in ATM dispenser',
+          status: TaskStatusEnums.ASSIGNED,
+        },
+        user,
+      );
 
       this.logger.error(`Cash  jammed at ATM ${atmId}. Critical issue logged.`);
 
@@ -291,16 +306,23 @@ export class SdkService {
     };
   }
 
-  public async endTransaction(simulateCardEjectFailure: boolean, atm: string) {
+  public async endTransaction(
+    simulateCardEjectFailure: boolean,
+    atm: string,
+    user: string,
+  ) {
     if (simulateCardEjectFailure) {
       this.logger.error(`Card ejection failed. Card retained in ATM.`);
-      await this.taskService.registerIssueLogs({
-        atm: atm,
-        healthStatus: AtmHealthStatus.CRITICAL,
-        taskTitle: TaskTitle.CARD_EJECT_FAILURE,
-        issueDescription: `Card ejection failed. Card retained in ATM.`,
-        status: TaskStatusEnums.ASSIGNED,
-      });
+      await this.taskService.registerIssueLogs(
+        {
+          atm: atm,
+          healthStatus: AtmHealthStatus.CRITICAL,
+          taskTitle: TaskTitle.CARD_EJECT_FAILURE,
+          issueDescription: `Card ejection failed. Card retained in ATM.`,
+          status: TaskStatusEnums.ASSIGNED,
+        },
+        user,
+      );
 
       return {
         success: false,

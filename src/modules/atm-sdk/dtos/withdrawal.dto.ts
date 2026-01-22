@@ -11,6 +11,10 @@ import { bool } from 'sharp';
 export class WithdrawalDto {
   @ApiProperty({ required: true, type: String })
   @IsString()
+  email: string;
+
+  @ApiProperty({ required: true, type: String })
+  @IsString()
   @IsOptional()
   atmId: string;
 
